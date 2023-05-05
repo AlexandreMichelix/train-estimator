@@ -1,13 +1,16 @@
-import {ApiException, DiscountCard, InvalidTripInputException, TripRequest} from "./model/trip.request";
+import { TicketPriceApi } from "./external/ticket-price.service";
+import { DiscountCard, InvalidTripInputException, TripRequest} from "./model/trip.request";
 
 export class TrainTicketEstimator {
+
+    constructor(private readonly ticketPriceApi: TicketPriceApi) {}
 
     async estimate(trainDetails: TripRequest): Promise<number> {
         const passengers = trainDetails.passengers;
         const tripDetails = trainDetails.details;
         
         // TODO USE THIS LINE AT THE END
-        const basicRate = await getBasicRate();
+        const basicRate = await this.ticketPriceApi.getBasicRate(tripDetails);
 
         if (!passengers.length) {
             return 0;
@@ -100,24 +103,5 @@ export class TrainTicketEstimator {
         }
 
         return total;
-
-        async function getBasicRate() {
-            let basicRate = -1;
-            try {
-                const response = await fetch(
-                    `https://sncf.com/api/train/estimate/price?from=${tripDetails.from}&to=${tripDetails.to}&date=${tripDetails.when}`
-                );
-                const json = await response.json();
-                basicRate = json.price || -1;
-            } catch (error) {
-                throw new ApiException();
-            }
-
-            if (basicRate === -1) {
-                throw new ApiException();
-            }
-
-            return basicRate;
-        }
     }
 }
