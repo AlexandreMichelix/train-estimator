@@ -9,7 +9,6 @@ export class TrainTicketEstimator {
         const passengers = trainDetails.passengers;
         const tripDetails = trainDetails.details;
         
-        // TODO USE THIS LINE AT THE END
         const basicRate = await this.ticketPriceApi.getBasicRate(tripDetails);
 
         if (!passengers.length) {
