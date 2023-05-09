@@ -1,25 +1,41 @@
 import { TrainTicketEstimator } from './train-estimator';
-import { InvalidTripInputException, Passenger, TripRequest } from './model/trip.request';
+import { InvalidTripInputException, Passenger, TripDetails, TripRequest } from './model/trip.request';
 import { TicketPriceApi } from './external/ticket-price.service';
+import { DiscountCard } from './model/trip.request';
 
 describe('TrainTicketEstimator', () => {
+  const currentDate = new Date();
   let estimator: TrainTicketEstimator;
   let ticketPriceApi: TicketPriceApi;
+  let tripDetails: TripDetails;
+  let passengers: Passenger[] = [];
+  const invalidAgePassenger: Passenger = new Passenger(-5, []);
+  const babyPassenger: Passenger = new Passenger(0.1, []);
+  const minorPassenger: Passenger = new Passenger(12, []);
+  const basicPassenger: Passenger = new Passenger(25, []);
+  const seniorPassenger: Passenger = new Passenger(72, []);
+  const datePlusFiveDays: Date = new Date(currentDate.setDate(currentDate.getDate() + 5));
+  const datePlusTwentyNineDays: Date = new Date(currentDate.setDate(currentDate.getDate() + 28));
+  const datePlusThrityDays: Date = new Date(currentDate.setDate(currentDate.getDate() + 30));
 
   beforeEach(() => {
     ticketPriceApi = new TicketPriceApi();
     estimator = new TrainTicketEstimator(ticketPriceApi);
-    jest.spyOn(ticketPriceApi, "getBasicRate").mockResolvedValue(0);
+    jest.spyOn(ticketPriceApi, "getBasicRate").mockResolvedValue(100);
+    tripDetails = {
+      from: 'Bordeaux',
+      to: 'Paris',
+      when: new Date('2023-06-03T08:00:00Z'),
+    };
   });
+
+  afterEach(() => {
+    passengers = [];
+  })
 
   describe('estimate', () => {
 
     it('should return 0 if no passengers', async () => {
-        const tripDetails = {
-            from: 'Bordeaux',
-            to: 'Paris',
-            when: new Date('2023-06-01T08:00:00Z'),
-        };
         const tripRequest: TripRequest = { passengers: [], details: tripDetails };
         const result = await estimator.estimate(tripRequest);
 
@@ -32,7 +48,8 @@ describe('TrainTicketEstimator', () => {
             to: 'Paris',
             when: new Date('2023-06-01T08:00:00Z'),
         };
-        const tripRequest: TripRequest = { passengers: [new Passenger(12, [])], details: tripDetails };
+        passengers.push(minorPassenger);
+        const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
         const result = estimator.estimate(tripRequest);
 
         await expect(async() => await result).rejects.toThrowError(
@@ -41,18 +58,12 @@ describe('TrainTicketEstimator', () => {
     });
     
     it('should throw an InvalidTripInputException if destination city is invalid', async () => {
-      const passengers = [
-        {
-            name: 'Alice',
-            age: 12,
-            discounts: [],
-        }
-    ];
+      passengers.push(minorPassenger);
         const tripDetails = {
             from: 'Bordeaux',
             to: '',
             when: new Date(),
-          };
+        };
           const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
           const result = estimator.estimate(tripRequest);
 
@@ -62,31 +73,20 @@ describe('TrainTicketEstimator', () => {
     });
 
     it('should throw an InvalidTripInputException if date is invalid', async () => {
+      passengers.push(minorPassenger);
       const tripDetails = {
           from: 'Bordeaux',
           to: 'Paris',
           when: new Date('2000-01-01T10:10:10Z'),
       };
-      const tripRequest: TripRequest = { passengers: [], details: tripDetails };
+      const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
       const result = estimator.estimate(tripRequest);
 
-      console.log(new Date());
       await expect(async() => await result).rejects.toThrowError(new InvalidTripInputException("Date is invalid"));
   });
 
   it('should throw an InvalidTripInputException if age is invalid', async () => {
-    const passengers = [
-        {
-            name: 'Alice',
-            age: -5,
-            discounts: [],
-        }
-    ];
-    const tripDetails = {
-        from: 'Paris',
-        to: 'Marseille',
-        when: new Date('2023-06-01T08:00:00Z'),
-    };
+    passengers.push(invalidAgePassenger);
     const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
     const result = estimator.estimate(tripRequest);
 
@@ -96,24 +96,100 @@ describe('TrainTicketEstimator', () => {
   });
 
   it('should calculate the correct ticket price for a single adult passenger', async () => {
-    const passengers = [
-        {
-            name: 'Alice',
-            age: 25,
-            discounts: [],
-        }
-    ];
-    const tripDetails = {
-        from: 'Paris',
-        to: 'Marseille',
-        when: new Date('2023-06-03T08:00:00Z'),
-    };
+    passengers.push(basicPassenger);
     const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
-
-    jest.spyOn(ticketPriceApi, "getBasicRate").mockResolvedValue(100);
     const result = await estimator.estimate(tripRequest);
 
     expect(result).toBe(110);
-});
+  });
+
+  it('should calculate the correct ticket price for a single senior passenger', async () => {
+    passengers.push(seniorPassenger);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(70);
+  });
+
+  it('should calculate the correct ticket price for a child under age of 1', async () => {
+    passengers.push(babyPassenger);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(0);
+  });
+
+  it('should calculate the correct ticket price for a passenger who has a trainStroke card', async () => {
+    const trainStrokePassenger: Passenger = {...basicPassenger, discounts :  [DiscountCard.TrainStroke]};
+    passengers.push(trainStrokePassenger);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(1);
+  });
+
+  it('should calculate the correct ticket price for a couple of senior people', async () => {
+    const alice: Passenger = {...seniorPassenger, discounts :  [DiscountCard.Senior, DiscountCard.Couple]};
+    const fred: Passenger = {...seniorPassenger, discounts :  [DiscountCard.Senior]};
+    passengers.push(alice, fred);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(60);
+  });
+
+  it('should calculate the correct ticket price for a single adult passenger with half-couple card', async () => {
+    const alice: Passenger = {...basicPassenger, discounts : [DiscountCard.HalfCouple]};
+    passengers.push(alice);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(100);
+  });
+
+  it('should calculate the correct ticket price for a single adult passenger with half-couple and senior card', async () => {
+    const alice: Passenger = {...seniorPassenger, discounts : [DiscountCard.HalfCouple, DiscountCard.Senior]};
+    passengers.push(alice);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(40);
+  });
+
+  it('should double the price of the ticket', async () => {
+    tripDetails = {
+      ...tripDetails,
+      when: datePlusFiveDays,
+    }
+    passengers.push(basicPassenger);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails};
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(220);
+  });
+
+  it('should add a 20% discount when trip depart is + 30 days', async () => {
+    tripDetails = {
+      ...tripDetails,
+      when: datePlusThrityDays,
+    }
+    passengers.push(basicPassenger);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails};
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(100);
+  });
+
+  it('should add a 18% discount when trip depart is + 29 days', async () => {
+    tripDetails = {
+      ...tripDetails,
+      when: datePlusTwentyNineDays,
+    }
+    passengers.push(basicPassenger);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails};
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(102);
+  });
 
 })

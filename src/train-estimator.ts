@@ -50,21 +50,22 @@ export class TrainTicketEstimator {
                 tmp = basicRate*1.2;
             }
             
-            const daysUntilTrip = Math.ceil(
-                (tripDetails.when.getTime() - new Date().getTime()) / (1000 * 3600 * 24)
-            );
-            if (passenger.age > 1 && passenger.age < 4) {
-                tmp = 9;
-            } else if (passenger.discounts.includes(DiscountCard.TrainStroke)) {
-                tmp = 1;
-            } else if (daysUntilTrip >= 30) {
+            const d = new Date();
+            if (trainDetails.details.when.getTime() >= d.setDate(d.getDate() +30)) {
                 tmp -= basicRate * 0.2;
-            } else if (daysUntilTrip > -25) {
-                console.log('wxwxwx');
-                tmp += (20 - daysUntilTrip) * 0.02 * basicRate;
+            } else if (trainDetails.details.when.getTime() > d.setDate(d.getDate() -25)) {
+                const date1 = trainDetails.details.when;
+                const date2 = new Date();
+                const diff = Math.abs(date1.getTime() - date2.getTime());
+                const diffDays = Math.ceil(diff / (1000 * 3600 * 24));
+
+                tmp += (20 - diffDays) * 0.02 * basicRate;
             } else {
-                console.log('1AZEFZEFZEFEAFZE');
                 tmp += basicRate;
+            }
+
+            if(passenger.discounts.includes(DiscountCard.TrainStroke)){
+                tmp = 1;
             }
 
             total += tmp;
