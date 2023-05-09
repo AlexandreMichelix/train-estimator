@@ -60,8 +60,10 @@ export class TrainTicketEstimator {
             } else if (daysUntilTrip >= 30) {
                 tmp -= basicRate * 0.2;
             } else if (daysUntilTrip > -25) {
+                console.log('wxwxwx');
                 tmp += (20 - daysUntilTrip) * 0.02 * basicRate;
             } else {
+                console.log('1AZEFZEFZEFEAFZE');
                 tmp += basicRate;
             }
 
