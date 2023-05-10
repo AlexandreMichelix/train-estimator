@@ -51,11 +51,13 @@ export class TrainTicketEstimator {
             
             const daysUntilTrip = Math.ceil(
                 (tripDetails.when.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+            const hoursUntilTrip: number = Math.ceil(
+                (tripDetails.when.getTime() - new Date().getTime()) / (1000 * 60 * 60));
             if (passenger.age > 1 && passenger.age < 4) {
                 passengerRate = 9;
             } else if (passenger.discounts.includes(DiscountCard.TrainStroke)) {
                 passengerRate = 1;
-            } else if (daysUntilTrip >= 30) {
+            } else if (daysUntilTrip >= 30 || hoursUntilTrip <= 6) {
                 passengerRate -= basicRate * 0.2;
             } else if (daysUntilTrip >= 5) {
                 passengerRate += (20 - daysUntilTrip) * 0.02 * basicRate;

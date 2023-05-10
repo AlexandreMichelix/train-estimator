@@ -209,4 +209,20 @@ describe('TrainTicketEstimator', () => {
     expect(result).toBe(220);
   });
 
+
+  it('should add a 20% discount when trip depart is 6 hours before ', async () => {
+
+    const dateLessThanSixHours: Date = new Date(currentDate.setHours(currentDate.getHours() + 5));
+    
+    tripDetails = {
+      ...tripDetails,
+      when: dateLessThanSixHours,
+    }
+    passengers.push(basicPassenger);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails};
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(100);
+  });
+
 })
