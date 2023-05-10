@@ -15,6 +15,7 @@ describe('TrainTicketEstimator', () => {
   const basicPassenger: Passenger = new Passenger(25, []);
   const seniorPassenger: Passenger = new Passenger(72, []);
   const datePlusFiveDays: Date = new Date(currentDate.setDate(currentDate.getDate() + 5));
+  const dateLessThanFiveDays: Date = new Date(currentDate.setDate(currentDate.getDate() + 4));
   const datePlusTwentyNineDays: Date = new Date(currentDate.setDate(currentDate.getDate() + 28));
   const datePlusThrityDays: Date = new Date(currentDate.setDate(currentDate.getDate() + 30));
 
@@ -156,19 +157,7 @@ describe('TrainTicketEstimator', () => {
     expect(result).toBe(40);
   });
 
-  it('should double the price of the ticket', async () => {
-    tripDetails = {
-      ...tripDetails,
-      when: datePlusFiveDays,
-    }
-    passengers.push(basicPassenger);
-    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails};
-    const result = await estimator.estimate(tripRequest);
-
-    expect(result).toBe(220);
-  });
-
-  it('should add a 20% discount when trip depart is + 30 days', async () => {
+  it('should add a 20% discount when trip depart is in 30 days or more', async () => {
     tripDetails = {
       ...tripDetails,
       when: datePlusThrityDays,
@@ -180,7 +169,7 @@ describe('TrainTicketEstimator', () => {
     expect(result).toBe(100);
   });
 
-  it('should add a 18% discount when trip depart is + 29 days', async () => {
+  it('should add a 18% discount when trip depart is in 29 days', async () => {
     tripDetails = {
       ...tripDetails,
       when: datePlusTwentyNineDays,
@@ -190,6 +179,31 @@ describe('TrainTicketEstimator', () => {
     const result = await estimator.estimate(tripRequest);
 
     expect(result).toBe(102);
+  });
+
+  it('should add a 30% discount when trip depart is 5 days before', async () => {
+    tripDetails = {
+      ...tripDetails,
+      when: datePlusFiveDays,
+    }
+    passengers.push(basicPassenger);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails};
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(102);
+  });
+
+  
+  it('should double the price of the ticket  when trip depart is less than 5 days ', async () => {
+    tripDetails = {
+      ...tripDetails,
+      when: dateLessThanFiveDays,
+    }
+    passengers.push(basicPassenger);
+    const tripRequest: TripRequest = { passengers: passengers, details: tripDetails};
+    const result = await estimator.estimate(tripRequest);
+
+    expect(result).toBe(220);
   });
 
 })
