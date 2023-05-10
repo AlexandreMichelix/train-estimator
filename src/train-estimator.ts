@@ -9,7 +9,6 @@ export class TrainTicketEstimator {
         const passengers = trainDetails.passengers;
         const tripDetails = trainDetails.details;
         
-        // TODO USE THIS LINE AT THE END
         const basicRate = await this.ticketPriceApi.getBasicRate(tripDetails);
 
         if (!passengers.length) {
@@ -29,9 +28,8 @@ export class TrainTicketEstimator {
         }
 
         let total = 0;
-        for (let i = 0; i < passengers.length; i++) {
-            const passenger = passengers[i];
-            let tmp = basicRate;
+        for (const passenger of passengers) {
+            let passengerRate = basicRate;
 
             if (passenger.age < 0) {
                 throw new InvalidTripInputException("Age is invalid");
@@ -41,65 +39,44 @@ export class TrainTicketEstimator {
                 continue;
             }
             else if (passenger.age <= 17) {
-                tmp = basicRate* 0.6;
+                passengerRate *= 0.6;
             } else if(passenger.age >= 70) {
-                tmp = basicRate * 0.8;
+                passengerRate *= 0.8;
                 if (passenger.discounts.includes(DiscountCard.Senior)) {
-                    tmp -= basicRate * 0.2;
+                    passengerRate -= basicRate * 0.2;
                 }
             } else {
-                tmp = basicRate*1.2;
+                passengerRate *= 1.2;
             }
             
             const daysUntilTrip = Math.ceil(
-                (tripDetails.when.getTime() - new Date().getTime()) / (1000 * 3600 * 24)
-            );
+                (tripDetails.when.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
             if (passenger.age > 1 && passenger.age < 4) {
-                tmp = 9;
+                passengerRate = 9;
             } else if (passenger.discounts.includes(DiscountCard.TrainStroke)) {
-                tmp = 1;
+                passengerRate = 1;
             } else if (daysUntilTrip >= 30) {
-                tmp -= basicRate * 0.2;
-            } else if (daysUntilTrip > -25) {
-                tmp += (20 - daysUntilTrip) * 0.02 * basicRate;
+                passengerRate -= basicRate * 0.2;
+            } else if (daysUntilTrip >= 5) {
+                passengerRate += (20 - daysUntilTrip) * 0.02 * basicRate;
             } else {
-                tmp += basicRate;
+                passengerRate += basicRate;
             }
 
-            total += tmp;
+            total += passengerRate;
 
         }
 
-        if (passengers.length == 2) {
-            let isACouple = false;
-            let isAMinor = false;
-            for (let i=0;i<passengers.length;i++) {
-                if (passengers[i].discounts.includes(DiscountCard.Couple)) {
-                    isACouple = true;
-                }
-                if (passengers[i].age < 18) {
-                    isAMinor = true;
-                }
-            }
-            if (isACouple && !isAMinor) {
-                total -= basicRate * 0.2 * 2;
-            }
+        const isACouple = passengers.some(passenger => passenger.discounts.includes(DiscountCard.Couple));
+        const isAHalfCouple = passengers.some(passenger => passenger.discounts.includes(DiscountCard.HalfCouple));
+        const isAMinor = passengers.some(passenger => passenger.age < 18);
+
+        if (passengers.length === 2 && isACouple && !isAMinor) {
+            total -= basicRate * 0.4;
         }
 
-        if (passengers.length == 1) {
-            let isACouple = false;
-            let isAMinor = false;
-            for (let i = 0; i < passengers.length; i++) {
-                if (passengers[i].discounts.includes(DiscountCard.HalfCouple)) {
-                    isACouple = true;
-                }
-                if (passengers[i].age < 18) {
-                    isAMinor = true;
-                }
-            }
-            if (isACouple && !isAMinor) {
-                total -= basicRate * 0.1;
-            }
+        if (passengers.length === 1 && isAHalfCouple && !isAMinor) {
+            total -= basicRate * 0.1;
         }
 
         return total;
