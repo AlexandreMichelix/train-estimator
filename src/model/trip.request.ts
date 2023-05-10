@@ -24,8 +24,9 @@ export class ApiException extends Error {
 }
 
 export enum DiscountCard {
-    Senior = "Senior",
-    TrainStroke= "TrainStroke",
     Couple = "Couple",
+    Family = "Family",
     HalfCouple = "HalfCouple",
+    Senior = "Senior",
+    TrainStroke= "TrainStroke"
 }
