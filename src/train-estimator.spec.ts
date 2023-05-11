@@ -23,7 +23,7 @@ describe('TrainTicketEstimator', () => {
     tripDetails = {
       from: 'Bordeaux',
       to: 'Paris',
-      when: new Date('2023-06-03T08:00:00Z'),
+      when: new Date(new Date().setDate(currentDate.getDate() + 24)),
     };
   });
 
@@ -227,11 +227,12 @@ describe('TrainTicketEstimator', () => {
 
     it('should add a 60% discount if it is a senior with senior card and couple card', async () => {
       const carl: Passenger = {...seniorPassenger, discounts: [DiscountCard.Senior, DiscountCard.Couple]};
-      passengers.push(carl);
+      const carla: Passenger = {...seniorPassenger, discounts: [DiscountCard.Senior]};
+      passengers.push(carl, carla);
       const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
-        const result = await estimator.estimate(tripRequest);
+      const result = await estimator.estimate(tripRequest);
 
-        expect(result).toBe(52);
+        expect(result).toBe(64);
     });
 
     it('should throw an InvalidTripInputException if lastName is null', async () => {
@@ -263,11 +264,12 @@ describe('TrainTicketEstimator', () => {
 
     it('should only add a 30% discount if the passenger has a family card and a couple card', async () => {
       const greg: Passenger = {...basicPassenger, discounts: [DiscountCard.Family, DiscountCard.Couple], lastName: 'Jambon'};
-      passengers.push(greg);
+      const hillary: Passenger = {...basicPassenger, discounts: [DiscountCard.Family], lastName: 'Jambon'};
+      passengers.push(greg, hillary);
       const tripRequest: TripRequest = { passengers: passengers, details: tripDetails };
         const result = await estimator.estimate(tripRequest);
 
-        expect(result).toBe(82);
+        expect(result).toBe(164);
     });
 
     it('should only add a 50% discount if the passenger has a family card and a senior card', async () => {

@@ -34,9 +34,6 @@ export class TrainTicketEstimator {
             if (familyPassengerWithCard) {
                 familyDiscount = 0.3;
             }
-            else {
-                familyDiscount = 0;
-            }
         }
 
         let total = 0;
